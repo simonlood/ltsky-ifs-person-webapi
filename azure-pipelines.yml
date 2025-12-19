@@ -1,0 +1,51 @@
+variables:
+- name: BuildParameters.RestoreBuildProjects
+  value: '**/*.csproj'
+- name: BuildParameters.TestProjects
+  value: '**/*[Tt]est/*.csproj'
+- name: BuildConfiguration
+  value: 'Release'
+trigger:
+  branches:
+    include:
+    - refs/heads/test
+    - refs/heads/master
+  batch: True
+name: $(date:yyyyMMdd)$(rev:.r)
+jobs:
+- job: Job_1
+  displayName: Agent job 1
+  pool:
+    vmImage: 'windows-latest'
+  steps:
+  - checkout: self
+    clean: true
+  - task: DotNetCoreCLI@2
+    displayName: Restore
+    inputs:
+      command: restore
+      projects: $(BuildParameters.RestoreBuildProjects)
+  - task: DotNetCoreCLI@2
+    displayName: Build
+    inputs:
+      projects: $(BuildParameters.RestoreBuildProjects)
+      arguments: --configuration $(BuildConfiguration)
+  - task: DotNetCoreCLI@2
+    displayName: Test
+    inputs:
+      command: test
+      projects: $(BuildParameters.TestProjects)
+      arguments: --configuration $(BuildConfiguration)
+  - task: DotNetCoreCLI@2
+    displayName: Publish
+    inputs:
+      command: publish
+      publishWebProjects: True
+      projects: $(BuildParameters.RestoreBuildProjects)
+      arguments: --configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Artifact
+    condition: succeededOrFailed()
+    inputs:
+      PathtoPublish: $(build.artifactstagingdirectory)
+...
